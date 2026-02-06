@@ -39,6 +39,7 @@ This project is designed for **local development and learning purposes**, using 
 
 ### Frontend
 
+```bash
 frontend/
 ┣ 📂public
 ┃ ┗ 📜index.html
@@ -60,13 +61,16 @@ frontend/
 ┣ 📜package.json
 ┣ 📜tailwind.config.js
 ┗ 📜README.md
+```
 
 ### Backend
 
+```bash
 backend/
 ┣ 📜server.js
 ┣ 📜package.json
 ┗ 📜README.md
+```
 
 ## 🚀 Running the App Locally
 
