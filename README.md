@@ -79,7 +79,7 @@ backend/
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/caterpillhub/expense-tracker-penthara-ai
 cd expense-tracker
 ```
 
