@@ -72,6 +72,8 @@ backend/
 ┗ 📜README.md
 ```
 
+---
+
 ## 🚀 Running the App Locally
 
 ### 1️⃣ Clone the Repository
