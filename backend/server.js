@@ -1,45 +1,66 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+/* =========================
+   Middleware
+========================= */
 
-/**
- * In-memory storage for expenses and categories
- * In a production app, this would be a database
- */
+// Enable CORS (safe for frontend hosting)
+app.use(
+  cors({
+    origin: '*', // You can restrict this later to your Vercel URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  })
+);
+
+// Body parsing
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+/* =========================
+   In-memory Data Store
+========================= */
+
 let expenses = [];
 
-let categories = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Healthcare', 'Shopping'];
+let categories = [
+  'Food',
+  'Transport',
+  'Entertainment',
+  'Utilities',
+  'Healthcare',
+  'Shopping',
+];
+
+/* =========================
+   Routes
+========================= */
 
 /**
  * GET /api/expenses
- * Retrieves all expenses, optionally filtered by category
- * @query {string} category - Optional category filter
+ * Optional query: ?category=
  */
 app.get('/api/expenses', (req, res) => {
-  const { category } = req.query;
-
   try {
+    const { category } = req.query;
+
     let filteredExpenses = expenses;
 
     if (category && category !== 'All') {
       filteredExpenses = expenses.filter(
-        (expense) => expense.category.toLowerCase() === category.toLowerCase()
+        (expense) =>
+          expense.category.toLowerCase() === category.toLowerCase()
       );
     }
 
     res.json({
       success: true,
       data: filteredExpenses,
-      count: filteredExpenses.length
+      count: filteredExpenses.length,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -48,28 +69,31 @@ app.get('/api/expenses', (req, res) => {
 
 /**
  * GET /api/expenses/summary
- * Retrieves expense summary grouped by category
  */
 app.get('/api/expenses/summary', (req, res) => {
   try {
     const summary = expenses.reduce((acc, expense) => {
-      const category = expense.category;
-      if (!acc[category]) {
-        acc[category] = 0;
-      }
-      acc[category] += expense.amount;
+      acc[expense.category] =
+        (acc[expense.category] || 0) + expense.amount;
       return acc;
     }, {});
 
-    const summaryArray = Object.entries(summary).map(([category, total]) => ({
-      category,
-      total
-    }));
+    const summaryArray = Object.entries(summary).map(
+      ([category, total]) => ({
+        category,
+        total,
+      })
+    );
+
+    const grandTotal = expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
 
     res.json({
       success: true,
       data: summaryArray,
-      grandTotal: expenses.reduce((sum, expense) => sum + expense.amount, 0)
+      grandTotal,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -78,18 +102,15 @@ app.get('/api/expenses/summary', (req, res) => {
 
 /**
  * POST /api/expenses
- * Creates a new expense
- * @body {Object} expense - The expense object with amount, category, date, description
  */
 app.post('/api/expenses', (req, res) => {
   try {
     const { amount, category, date, description } = req.body;
 
-    // Validation
     if (!amount || !category || !date) {
       return res.status(400).json({
         success: false,
-        error: 'Amount, category, and date are required'
+        error: 'Amount, category, and date are required',
       });
     }
 
@@ -98,7 +119,7 @@ app.post('/api/expenses', (req, res) => {
       amount: parseFloat(amount),
       category,
       date,
-      description: description || ''
+      description: description || '',
     };
 
     expenses.push(newExpense);
@@ -106,7 +127,7 @@ app.post('/api/expenses', (req, res) => {
     res.status(201).json({
       success: true,
       data: newExpense,
-      message: 'Expense added successfully'
+      message: 'Expense added successfully',
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -115,36 +136,39 @@ app.post('/api/expenses', (req, res) => {
 
 /**
  * PUT /api/expenses/:id
- * Updates an existing expense
- * @param {string} id - The expense ID
- * @body {Object} expense - The updated expense object
  */
 app.put('/api/expenses/:id', (req, res) => {
   try {
     const { id } = req.params;
     const { amount, category, date, description } = req.body;
 
-    const expenseIndex = expenses.findIndex((expense) => expense.id === id);
+    const index = expenses.findIndex((e) => e.id === id);
 
-    if (expenseIndex === -1) {
+    if (index === -1) {
       return res.status(404).json({
         success: false,
-        error: 'Expense not found'
+        error: 'Expense not found',
       });
     }
 
-    expenses[expenseIndex] = {
-      ...expenses[expenseIndex],
-      amount: amount !== undefined ? parseFloat(amount) : expenses[expenseIndex].amount,
-      category: category || expenses[expenseIndex].category,
-      date: date || expenses[expenseIndex].date,
-      description: description !== undefined ? description : expenses[expenseIndex].description
+    expenses[index] = {
+      ...expenses[index],
+      amount:
+        amount !== undefined
+          ? parseFloat(amount)
+          : expenses[index].amount,
+      category: category || expenses[index].category,
+      date: date || expenses[index].date,
+      description:
+        description !== undefined
+          ? description
+          : expenses[index].description,
     };
 
     res.json({
       success: true,
-      data: expenses[expenseIndex],
-      message: 'Expense updated successfully'
+      data: expenses[index],
+      message: 'Expense updated successfully',
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -153,28 +177,26 @@ app.put('/api/expenses/:id', (req, res) => {
 
 /**
  * DELETE /api/expenses/:id
- * Deletes an expense
- * @param {string} id - The expense ID
  */
 app.delete('/api/expenses/:id', (req, res) => {
   try {
     const { id } = req.params;
 
-    const expenseIndex = expenses.findIndex((expense) => expense.id === id);
+    const index = expenses.findIndex((e) => e.id === id);
 
-    if (expenseIndex === -1) {
+    if (index === -1) {
       return res.status(404).json({
         success: false,
-        error: 'Expense not found'
+        error: 'Expense not found',
       });
     }
 
-    const deletedExpense = expenses.splice(expenseIndex, 1);
+    const deleted = expenses.splice(index, 1)[0];
 
     res.json({
       success: true,
-      data: deletedExpense[0],
-      message: 'Expense deleted successfully'
+      data: deleted,
+      message: 'Expense deleted successfully',
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -183,79 +205,80 @@ app.delete('/api/expenses/:id', (req, res) => {
 
 /**
  * GET /api/categories
- * Retrieves all available categories
  */
 app.get('/api/categories', (req, res) => {
   res.json({
     success: true,
-    data: categories
+    data: categories,
   });
 });
+
 /**
  * POST /api/categories
- * Creates a new category
- * @body {Object} category - The category object with name
  */
 app.post('/api/categories', (req, res) => {
   try {
     const { name } = req.body;
 
-    // Validation
-    if (!name || name.trim() === '') {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        error: 'Category name is required'
+        error: 'Category name is required',
       });
     }
 
     const categoryName = name.trim();
 
-    // Check if category already exists
-    if (categories.some(cat => cat.toLowerCase() === categoryName.toLowerCase())) {
+    if (
+      categories.some(
+        (c) => c.toLowerCase() === categoryName.toLowerCase()
+      )
+    ) {
       return res.status(400).json({
         success: false,
-        error: 'Category already exists'
+        error: 'Category already exists',
       });
     }
 
-    // Add new category
     categories.push(categoryName);
 
     res.status(201).json({
       success: true,
       data: categoryName,
-      message: 'Category created successfully'
+      message: 'Category created successfully',
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Health check endpoint
+/**
+ * Health Check
+ */
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    error: 'Internal Server Error'
+  res.json({
+    status: 'OK',
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
-// 404 handler
+/* =========================
+   Error Handling
+========================= */
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    error: 'Route not found'
+    error: 'Route not found',
   });
 });
 
+/* =========================
+   Server Start
+========================= */
+
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 API Health: http://localhost:${PORT}/api/health`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
 
 module.exports = app;
