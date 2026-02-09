@@ -13,7 +13,7 @@
 import axios from 'axios';
 
 // API base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://expense-tracker-penthara-ai.onrender.com';
 
 /**
  * Fetch all expenses, optionally filtered by category
